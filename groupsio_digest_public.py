@@ -16,7 +16,42 @@ import datetime
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
-# Configuration — edit these values
+# Keeping your API key (and group list) out of GitHub
+#
+# You never need to put real secrets in this file to use it. Two supported
+# ways to keep them private, checked in this order (later wins):
+#
+#   1. Local config.py file — copy config.py.example to config.py in this
+#      same folder and fill in your values there instead of below.
+#      config.py is listed in .gitignore, so `git add .` / `git commit`
+#      will never pick it up, even if you fork or push changes here.
+#   2. Environment variable — set GROUPSIO_API_KEY (and, optionally,
+#      GROUPSIO_OUTPUT_DIR) in your shell, cron job, or CI secrets (e.g. a
+#      GitHub Actions repository secret). This takes priority over
+#      config.py, which is convenient for scheduled/CI runs — see
+#      .github/workflows/digest.yml.example.
+#
+# If neither is present, the script just uses the placeholder values below,
+# exactly like before.
+# ---------------------------------------------------------------------------
+
+try:
+    import config as _local_config   # config.py, if you created one (gitignored)
+except ImportError:
+    _local_config = None
+
+
+def _from_config(name, default):
+    """Return an attribute from a local config.py, if it defines one."""
+    if _local_config is not None and hasattr(_local_config, name):
+        return getattr(_local_config, name)
+    return default
+
+
+# ---------------------------------------------------------------------------
+# Configuration — edit these values directly, or (recommended) leave them
+# as placeholders and use config.py / environment variables instead. See
+# above.
 # ---------------------------------------------------------------------------
 
 API_KEY = "YOUR_API_KEY_HERE"   # From groups.io/settings/apikeys
@@ -52,6 +87,34 @@ GROUPS = [
     {"name": "PNW CPS / Codeplugs",   "group": "dmr+PNW-CPS-Programming-Codeplugs",  "domain": "groups.io"},
     {"name": "PNW MeshCore",          "group": "dmr+pnwd-meshcore",                  "domain": "groups.io", "restricted": True},
 ]
+
+# --- Apply overrides: config.py first, then environment variables ----------
+API_KEY       = _from_config("API_KEY", API_KEY)
+GROUPS        = _from_config("GROUPS", GROUPS)
+LOOKBACK_DAYS = _from_config("LOOKBACK_DAYS", LOOKBACK_DAYS)
+OUTPUT_DIR    = _from_config("OUTPUT_DIR", OUTPUT_DIR)
+
+API_KEY    = os.environ.get("GROUPSIO_API_KEY", API_KEY)
+OUTPUT_DIR = Path(os.environ.get("GROUPSIO_OUTPUT_DIR", OUTPUT_DIR))
+
+# Non-interactive runs (cron, GitHub Actions, etc.) shouldn't block waiting
+# for a keypress or try to launch a desktop browser. Set
+# GROUPSIO_DIGEST_HEADLESS=1 yourself for cron, or it's detected
+# automatically inside GitHub Actions (which sets GITHUB_ACTIONS=true).
+HEADLESS = (
+    os.environ.get("GROUPSIO_DIGEST_HEADLESS") == "1"
+    or os.environ.get("GITHUB_ACTIONS") == "true"
+)
+
+
+def pause(message="Press Enter to exit..."):
+    """input() that no-ops during headless/CI runs instead of hanging."""
+    if not HEADLESS:
+        try:
+            input(f"\n{message}")
+        except EOFError:
+            pass  # no interactive terminal attached; nothing to wait for
+
 
 # ---------------------------------------------------------------------------
 # API helpers
@@ -364,10 +427,14 @@ def main():
 
     # Check API key is configured
     if API_KEY == "YOUR_API_KEY_HERE":
-        print("\nERROR: Please open groupsio_digest.py in a text editor")
-        print("       and replace YOUR_API_KEY_HERE with your actual API key.")
-        print("       Get one at: https://groups.io/settings/apikeys")
-        input("\nPress Enter to exit...")
+        print("\nERROR: No API key configured. Set it one of three ways:")
+        print("       1. Open groupsio_digest_public.py and replace")
+        print("          YOUR_API_KEY_HERE with your actual API key.")
+        print("       2. Copy config.py.example to config.py and paste")
+        print("          your key there (recommended — keeps it out of git).")
+        print("       3. Set the GROUPSIO_API_KEY environment variable.")
+        print("       Get a key at: https://groups.io/settings/apikeys")
+        pause()
         sys.exit(1)
 
     # Verify key
@@ -377,7 +444,7 @@ def main():
         print("OK")
     except RuntimeError as e:
         print(f"FAILED\n\nError: {e}")
-        input("\nPress Enter to exit...")
+        pause()
         sys.exit(1)
 
     # Create output directory
@@ -430,15 +497,18 @@ def main():
     print()
     print(txt_content)
 
-    # Open HTML in browser
-    print(f"\nOpening HTML report in browser...")
-    webbrowser.open(html_path.as_uri())
+    # Open HTML in browser (skipped on headless/CI runs)
+    if not HEADLESS:
+        print(f"\nOpening HTML report in browser...")
+        webbrowser.open(html_path.as_uri())
+    else:
+        print(f"\n(Headless run detected — skipping browser launch.)")
 
     print(f"\nFiles saved:")
     print(f"  HTML:  {html_path}")
     print(f"  Text:  {txt_path}")
     print()
-    input("Press Enter to exit...")
+    pause()
 
 
 if __name__ == "__main__":

@@ -69,6 +69,11 @@ Open `groupsio_digest.py` in any text editor (Notepad, VSCode, etc.) and edit th
 API_KEY = "paste-your-key-here"
 ```
 
+**Recommended: keep your key out of the file entirely.** If you ever fork this repo or push your own changes back to GitHub, an API key pasted directly into the script can get committed by accident. Two supported alternatives, described in full in [Keeping secrets out of GitHub](#keeping-secrets-out-of-github) below:
+
+- Copy `config.py.example` to `config.py` and put your key there — it's gitignored, so it never gets committed.
+- Set the `GROUPSIO_API_KEY` environment variable — handy for cron jobs or CI (e.g. GitHub Actions secrets).
+
 ### Lookback window
 
 ```python
@@ -148,6 +153,26 @@ Some groups allow API access but have closed archives — meaning you can fetch 
 The script will still fetch and count messages for these groups, but will omit topic titles and links from the report. They appear in a separate "Members Only" section showing only the group name and message count.
 
 This is different from `"restricted": True`, which skips the group entirely because the owner has disabled API access.
+
+---
+
+## Keeping secrets out of GitHub
+
+You don't need to paste your real API key (or your private group list) directly into `groupsio_digest_public.py`. Two supported ways to externalize them, checked in this order — an environment variable wins over `config.py`, which wins over the placeholders in the script:
+
+### Option 1 — a local config.py file
+
+1. Copy `config.py.example` to `config.py`, in the same folder as the script.
+2. Open `config.py` and paste your real API key in place of the placeholder.
+3. Run the script as usual — it picks up `config.py` automatically.
+
+`config.py` is listed in `.gitignore`, so `git add` / `git commit` will never pick it up, even if you fork this repo or push your own changes. You can also move your `GROUPS` list, `LOOKBACK_DAYS`, or `OUTPUT_DIR` into `config.py` the same way — see the comments in `config.py.example` for the format. This is the simplest option if you're running the script locally on Windows/macOS/Linux via Task Scheduler or cron.
+
+### Option 2 — environment variables
+
+Set `GROUPSIO_API_KEY` (and, optionally, `GROUPSIO_OUTPUT_DIR`) wherever the script runs — your shell profile, a cron job's environment, or a CI secret. This is the more natural fit for automated/scheduled setups, especially GitHub Actions: see `.github/workflows/digest.yml.example` for a ready-to-adapt scheduled workflow that reads your key from a GitHub repository secret, runs the digest on a cron schedule, and uploads the generated report. Rename it (drop `.example`) after adding a `GROUPSIO_API_KEY` secret under your repo's **Settings → Secrets and variables → Actions**.
+
+When the script detects it's running inside GitHub Actions (or you set `GROUPSIO_DIGEST_HEADLESS=1` yourself for a cron job), it automatically skips opening a browser window and waiting for a keypress at the end, so it won't hang in a non-interactive environment.
 
 ---
 

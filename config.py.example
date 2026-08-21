@@ -1,0 +1,40 @@
+"""
+Local configuration for groupsio_digest_public.py
+
+This file is OPTIONAL. Copy it to config.py in this same folder, fill in
+your real API key, and the script picks it up automatically the next time
+you run it.
+
+    cp config.py.example config.py        (macOS/Linux)
+    copy config.py.example config.py      (Windows, from a command prompt)
+
+...or just duplicate the file in File Explorer / Finder and rename the
+copy to config.py.
+
+config.py is listed in .gitignore, so it is never committed — this keeps
+your API key (and, if you use it, your private group list) out of GitHub
+even if you fork this repo, or push your own changes back to it.
+
+Everything below except API_KEY is optional — delete or comment out any
+line you don't want to override, and the script falls back to the value
+already in groupsio_digest_public.py.
+"""
+
+# Required for this file to do anything useful — get one at
+# https://groups.io/settings/apikeys
+API_KEY = "paste-your-real-key-here"
+
+# Optional — override the lookback window:
+# LOOKBACK_DAYS = 7
+
+# Optional — override where reports are saved:
+# from pathlib import Path
+# OUTPUT_DIR = Path.home() / "Documents" / "GroupsIO_Digest"
+
+# Optional — override the monitored groups list. Useful if you'd rather
+# keep your personal list of groups private (e.g. it reveals which
+# restricted-access groups you belong to). Copy the GROUPS list out of
+# groupsio_digest_public.py and edit it here instead.
+# GROUPS = [
+#     {"name": "LinuxHam", "group": "linuxham", "domain": "groups.io"},
+# ]

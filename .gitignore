@@ -1,0 +1,12 @@
+# Local secrets / config — never commit your real API key
+config.py
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Editor/OS cruft
+.DS_Store
+Thumbs.db
