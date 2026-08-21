@@ -1,0 +1,59 @@
+# Example: run the digest on a schedule using GitHub Actions + repository
+# secrets — the same pattern KF8BSS described in the EtherHam list: keep
+# the API key out of the repo as a GitHub Secret instead of pasting it into
+# the script, and let a scheduled job update a webpage automatically.
+#
+# To use this:
+#   1. Rename this file to digest.yml and move it to
+#      .github/workflows/digest.yml (drop the ".example").
+#   2. In your repo: Settings -> Secrets and variables -> Actions ->
+#      New repository secret -> name it GROUPSIO_API_KEY, paste your key.
+#   3. Adjust the schedule (cron, in UTC) below.
+#   4. Replace the "Publish" step with wherever you want the generated
+#      report to end up — e.g. commit it to a `gh-pages` branch and serve
+#      it with GitHub Pages, push it to another host, or just rely on the
+#      "Upload report as workflow artifact" step to download it manually.
+#      If you publish it as a public webpage, put access control in front
+#      of it (e.g. a Cloudflare Access policy) unless you want it public.
+#
+# GitHub Actions sets GITHUB_ACTIONS=true automatically, which the script
+# uses to skip opening a desktop browser and waiting for a keypress.
+
+name: Groups.io Digest
+
+on:
+  schedule:
+    - cron: "0 13 * * *"   # 13:00 UTC daily — adjust to your preferred time
+  workflow_dispatch: {}      # adds a "Run workflow" button on the Actions tab
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run digest
+        env:
+          GROUPSIO_API_KEY: ${{ secrets.GROUPSIO_API_KEY }}
+          GROUPSIO_OUTPUT_DIR: ${{ github.workspace }}/digest_output
+        run: python groupsio_digest_public.py
+
+      - name: Upload report as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: groupsio-digest
+          path: digest_output/
+
+      # --- Optional: publish the HTML somewhere you can browse it --------
+      # e.g. commit digest_output/*.html to a `gh-pages` branch and enable
+      # GitHub Pages for that branch, or push it to your own host.
+      # - name: Publish to GitHub Pages
+      #   uses: peaceiris/actions-gh-pages@v4
+      #   with:
+      #     github_token: ${{ secrets.GITHUB_TOKEN }}
+      #     publish_dir: ./digest_output
+      #     publish_branch: gh-pages
